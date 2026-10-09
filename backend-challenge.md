@@ -1,4 +1,4 @@
-# cocos-challenge-backend
+# warren-challenge-backend
 
 **Summary:**
 Develop an API that provides the following information through endpoints:
