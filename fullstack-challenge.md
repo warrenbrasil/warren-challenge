@@ -1,48 +1,48 @@
 # cocos-challenge-fullstack
 
-**Resumen:**
-Desarrollar una API que permita obtener la siguiente información a traves de endpoints:
-- **Portfolio**: La respuesta deberá devolver el valor total de la cuenta de un usuario, sus pesos disponibles para operar y el listado de activos que posee (incluyendo cantidad de acciones, el valor total monetario de la posición ($) y el rendimiento total (%)).
-- **Buscar activos**: La respuesta deberá devolver el listado de activos similares a la busqueda realizada (tiene que soportar busqueda por ticker y/o por nombre).
-- **Enviar una orden al mercado**: A traves de este endpoint se podrá enviar una orden de compra o venta del activo. Soportando dos tipos de ordenes: MARKET y LIMIT. Las ordenes MARKET no requieren que se envíe el precio ya que se ejecutara la orden con las ofertas del mercado, por el contrario, las ordenes `LIMIT` requieren el envío del precio al cual el usuario quiere ejecutar la orden. La orden quedará grabada en la tabla `orders` con el estado y valores correspondientes.
+**Summary:**
+Develop an API that provides the following information through endpoints:
+- **Portfolio**: The response must return the total value of a user's account, their available balance in pesos for trading, and the list of assets they own (including the number of shares, the position's total monetary value ($), and total return (%)).
+- **Asset search**: The response must return a list of assets similar to the search query (searches by ticker and/or name must be supported).
+- **Submit an order to the market**: This endpoint must allow buy and sell orders to be submitted for an asset. It must support two order types: MARKET and LIMIT. MARKET orders do not require a price because they are executed against market offers. In contrast, `LIMIT` orders require the price at which the user wants to execute the order. The order must be stored in the `orders` table with the corresponding status and values.
 
-**Opcionales / Nice to haves:**
-- Proveer una coleccion de Postman, Insomnia o REST Client para la API y ejemplos de como invocarla.
+**Optional / Nice to haves:**
+- Provide a Postman, Insomnia, or REST Client collection for the API, along with examples of how to call it.
 
-# Consideraciones funcionales
-- Los precios de los activos tienen que estar en pesos.
-- NO hace falta simular el mercado.
-- Cuando un usuario envía una orden, es necesario enviar la cantidad de acciones que quiere comprar o vender. Permitir al usuario enviar la cantidad de acciones exactas o un monto total de inversión en pesos (en este caso, calcular la cantidad de acciones máximas que puede enviar, no se admiten fracciones de acciones).
-- Las ordenes tienen un atributo llamado `side` que describe si la orden es de compra (`BUY`) o venta (`SELL`).
-- Las ordenes tienen distintos estados (status): 
-    - `NEW` - cuando una orden `LIMIT` es enviada al mercado, se envía con este estado.
-    - `FILLED` - cuando una orden se ejecuta. Las ordenes market son ejecutadas inmediatamente al ser enviadas.
-    - `REJECTED` - cuando la orden es rechazada por el mercado ya que no cumple con los requerimientos, como por ejemplo cuando se envía una orden por un monto mayor al disponible.
-    - `CANCELLED` - cuando la orden es cancelada por el usuario.
-- Cuando un usuario manda una orden de tipo MARKET, la orden se ejecuta inmediatamente y el estado es `FILLED`.
-- Cuando un usuario manda una order de tipo LIMIT, la orden el estado de la orden tiene que ser `NEW`.
-- Solo se pueden cancelar las ordenes con estado `NEW`.
-- Si la orden enviada es por un monto mayor al disponible, la orden tiene que ser rechazada y guardarse en estado REJECTED. Tener en cuenta tanto el caso de compra validar que el usuario tiene los pesos suficientes y en el de venta validar que el usuario tiene las acciones suficientes.
-- Las transferencias entrantes y salientes se pueden modelar como ordenes. Las transferencias entrantes tiene side `CASH_IN` mientras que las salientes side `CASH_OUT`.
-- Cuando una orden es ejecutada, se tiene que actualizar el listado de posiciones del usuario.
-- Para hacer el calculo de la tenencia y pesos disponibles utilizar todos los movimientos pertinentes que hay en la tabla `orders`, utilizando la columna `size`.
-- El cash (ARS) esta modelado como un instrumento de tipo 'MONEDA'.
-- En la tabla `marketdata` se encuentras los precios de los ultimos 2 dias de los instrumentos. El `close`, es el último precio de cada activo. Para calcular el retorno diario utilizar las columnas `close` y `previousClose`.
-- Cuando se envia una orden de tipo `MARKET`, utilizar el último precio (`close`).
-- Para calcular el valor de mercado, rendimiento y cantidad de acciones de cada posición usar las ordenes en estado `FILLED` de cada activo.
+# Functional considerations
+- Asset prices must be in pesos.
+- There is NO need to simulate the market.
+- When users submit an order, they must provide the number of shares they want to buy or sell. Allow users to enter either the exact number of shares or a total investment amount in pesos (in the latter case, calculate the maximum number of shares they can submit; fractional shares are not allowed).
+- Orders have an attribute called `side`, which indicates whether the order is a buy (`BUY`) or a sell (`SELL`).
+- Orders can have different statuses:
+    - `NEW` - when a `LIMIT` order is submitted to the market, it is assigned this status.
+    - `FILLED` - when an order is executed. Market orders are executed immediately upon submission.
+    - `REJECTED` - when an order is rejected by the market because it does not meet the requirements, for example, when an order is submitted for an amount greater than the available balance.
+    - `CANCELLED` - when the order is cancelled by the user.
+- When users submit a MARKET order, it is executed immediately and its status is `FILLED`.
+- When users submit a LIMIT order, its status must be `NEW`.
+- Only orders with a `NEW` status can be cancelled.
+- If an order is submitted for an amount greater than the available balance, it must be rejected and stored with a REJECTED status. For buy orders, validate that the user has sufficient funds in pesos; for sell orders, validate that the user has sufficient shares.
+- Incoming and outgoing transfers can be modeled as orders. Incoming transfers have a `CASH_IN` side, while outgoing transfers have a `CASH_OUT` side.
+- When an order is executed, the user's list of positions must be updated.
+- To calculate holdings and the available balance in pesos, use all relevant transactions in the `orders` table, based on the `size` column.
+- Cash (ARS) is modeled as an instrument of type 'MONEDA'.
+- The `marketdata` table contains instrument prices for the last two days. `close` is each asset's latest price. Use the `close` and `previousClose` columns to calculate the daily return.
+- When a `MARKET` order is submitted, use the latest price (`close`).
+- To calculate the market value, return, and number of shares for each position, use the orders with a `FILLED` status for each asset.
 
-# Consideraciones técnicas
-- **Para la API REST Express.js y TypeORM**
-- Desarrollar la aplicación utilizando Node.js. 
-  - Para la API REST utilizar algún framework a elección como Express o NestJS.
-  - Elegir alguna estrategia o libreria para el acceso a datos. Es posible utilizar un ORM o ejecutar consultas directamente.
-  - Utilizar cualquier libreria o framework que se crea conveniente.
-- Implementar un test funcional sobre la función para enviar una orden.
-- NO es necesario implementar autenticación de usuarios.
-- Documentá cualquier suposición o decisión de diseño que consideres relevante.
+# Technical considerations
+- **For the REST API, use Express.js and TypeORM.**
+- Develop the application using Node.js.
+  - Use a framework of your choice for the REST API, such as Express or NestJS.
+  - Choose a data access strategy or library. You may use an ORM or execute queries directly.
+  - Use any library or framework you consider appropriate.
+- Implement a functional test for the order submission function.
+- User authentication does NOT need to be implemented.
+- Document any assumptions or design decisions you consider relevant.
 
-# Base de datos
-Ya hemos creado una base de datos con las siguientes tablas y algunos datos (pueden usar el archivo `database.sql` para crear y popular las tablas):
+# Database
+We have already created a database with the following tables and some data (you may use the `database.sql` file to create and populate the tables):
 - **users**: id, email, accountNumber
 - **instruments**: id, ticker, name, type
 - **orders**: id, instrumentId, userId, side, size, price, type, status, datetime

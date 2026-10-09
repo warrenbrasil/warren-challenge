@@ -1,151 +1,99 @@
 # cocos-challenge-qa-automation
 
-**Resumen:**
-Tenés una app de inversiones en React Native (Expo) —`app-qa`— ya desarrollada, que
-consume una API REST (instrumentos, portafolio, búsqueda y envío de órdenes). Tu trabajo
-no es agregarle funcionalidad: es **evaluar su calidad y automatizar su validación**.
+**Summary:**
+You have an existing React Native (Expo) investment app—`app-qa`—that consumes a REST API (instruments, portfolio, search, and order submission). Your task is not to add functionality, but to **assess its quality and automate its validation**.
 
-Lo que más nos interesa evaluar no es cuántos tests escribís, sino tu **criterio**: qué
-decidís probar, **qué decidís NO probar, y por qué**. Un buen QA prioriza en función del
-riesgo y sabe justificar el alcance de su trabajo.
+What we are most interested in evaluating is not how many tests you write, but your **judgment**: what you decide to test, **what you decide NOT to test, and why**. A good QA engineer prioritizes based on risk and knows how to justify the scope of their work.
 
-Tiempo estimado: **una semana**.
+Estimated time: **one week**.
 
-## La app bajo prueba
+## The app under test
 
-`app-qa` es una app de trading en React Native (Expo) ya construida. Cloná el repo desde
-[github.com/cocoscap/app-qa](https://github.com/cocoscap/app-qa) y seguí su `README` para
-levantarla (Bun, un simulador de iOS o un emulador de Android, y un `.env` copiado de
-`.env.example`).
+`app-qa` is an existing React Native (Expo) trading app. Clone the repository from [github.com/cocoscap/app-qa](https://github.com/cocoscap/app-qa) and follow its `README` to run it (Bun, an iOS simulator or Android emulator, and a `.env` copied from `.env.example`).
 
-A grandes rasgos, la app tiene:
+At a high level, the app includes:
 
-- **Instrumentos**: listado con ticker, nombre, último precio y retorno diario.
-- **Búsqueda**: buscador de instrumentos por ticker.
-- **Portafolio**: efectivo disponible y posiciones con valor de mercado, ganancia y
-  rendimiento.
-- **Órdenes**: envío de órdenes (`BUY`/`SELL`, `MARKET`/`LIMIT`) e historial con su estado,
-  más una acción para reiniciar la cuenta.
+- **Instruments**: a list with ticker, name, last price, and daily return.
+- **Search**: an instrument search feature by ticker.
+- **Portfolio**: available cash and positions, including market value, profit, and return.
+- **Orders**: order submission (`BUY`/`SELL`, `MARKET`/`LIMIT`) and order history with status, plus an action to reset the account.
 
-El formulario de órdenes acepta la **cantidad exacta** de acciones **o** un **monto en
-pesos**, que la app convierte a la cantidad máxima de acciones enteras usando el último
-precio (sin fracciones de acción).
+The order form accepts either the **exact number** of shares or an **amount in pesos**, which the app converts into the maximum number of whole shares using the latest price (fractional shares are not allowed).
 
-Vos decidís a qué nivel automatizar —UI sobre el dispositivo/simulador, la API que
-consume, o una combinación— y con qué herramientas. Se valora que la elección esté
-**justificada** en función del problema.
+You decide which level to automate—the UI on a device/simulator, the API consumed by the app, or a combination—and which tools to use. Your choice should be **justified** based on the problem.
 
-## La API bajo prueba
+## The API under test
 
 Base URL: `https://dummy-api-topaz.vercel.app`
 
-La app consume esta API REST; podés pegarle directo para automatizar a ese nivel.
+The app consumes this REST API; you may call it directly to automate at that level.
 
-### Headers requeridos y aislamiento de estado
+### Required headers and state isolation
 
-Cada request necesita dos headers:
+Every request requires two headers:
 
-- `X-Enable-Bugs` — requerido. Controla el "nivel de defectos" de la API y sólo acepta los
-  valores `off`, `easy`, `medium` o `hard` (case-insensitive); cualquier otro valor —o su
-  ausencia— hace que la API responda `400`.
-  - Con `off` la API se comporta de forma **correcta** ("golden path"): es la línea base
-    contra la que escribís tus aserciones.
-  - `easy`, `medium` y `hard` **inyectan defectos intencionales** de dificultad creciente.
-    Sirven para **validar tu propia suite**: tus tests deberían **pasar con `off`** y
-    **empezar a fallar** a medida que subís el nivel. Detectar cada bug puntual no es un
-    entregable explícito, pero una buena suite debería ser capaz de hacerlo.
-- `X-Candidate-Id: <tu-id>` — identifica tu sesión. Los endpoints `/portfolio`, `/orders`
-  y `/reset` responden `400` sin él. La API **aísla** tu estado (órdenes, efectivo y
-  tenencias) por este id, así que elegí un valor propio (por ejemplo tu nombre) y vas a
-  trabajar sobre tu propia cuenta sin interferir con la de otros candidatos.
+- `X-Enable-Bugs` — required. Controls the API's "defect level" and only accepts the values `off`, `easy`, `medium`, or `hard` (case-insensitive); any other value—or an omitted header—causes the API to respond with `400`.
+  - With `off`, the API behaves **correctly** (the "golden path"): this is the baseline against which you write your assertions.
+  - `easy`, `medium`, and `hard` **inject intentional defects** with increasing levels of difficulty. They allow you to **validate your own suite**: your tests should **pass with `off`** and **begin to fail** as you increase the level. Detecting every individual bug is not an explicit deliverable, but a good suite should be capable of doing so.
+- `X-Candidate-Id: <your-id>` — identifies your session. The `/portfolio`, `/orders`, and `/reset` endpoints respond with `400` without it. The API **isolates** your state (orders, cash, and holdings) by this id, so choose your own value (for example, your name) and you will work with your own account without interfering with other candidates.
 
-Los instrumentos y sus precios son **compartidos y de sólo lectura**; lo que es
-por-candidato es tu portafolio y tus órdenes.
+Instruments and their prices are **shared and read-only**; your portfolio and orders are scoped per candidate.
 
-Cada candidato arranca con **1.000.000 ARS** y sin posiciones. El portafolio (efectivo +
-tenencias) se **deriva de tus órdenes en estado `FILLED`**: no hay saldo guardado aparte.
-Tu estado **persiste** entre corridas; `POST /reset` lo borra (útil para preparar o
-limpiar escenarios). Esto es para facilitar el armado de los casos de prueba. Es parte del entregable mencionar cómo se puede montar la automatización en un entorno donde un reset no es una posibilidad.
+Each candidate starts with **1,000,000 ARS** and no positions. The portfolio (cash + holdings) is **derived from your orders with a `FILLED` status**; there is no separately stored balance. Your state **persists** across runs; `POST /reset` clears it (which is useful for preparing or cleaning up scenarios). This is intended to make test case setup easier. The deliverable must explain how the automation could be set up in an environment where a reset is not possible.
 
 ### Endpoints
 
-- `GET /instruments` — listado de instrumentos. Cada uno incluye `ticker`, `name`,
-  `last_price` y `close_price`. El retorno diario se calcula a partir del último precio y
-  el precio de cierre.
-- `GET /search?query=<texto>` — búsqueda de instrumentos por ticker.
-- `GET /portfolio` — `{ cash, holdings }`, derivados de tus órdenes `FILLED` y **netos de
-  lo reservado por tus órdenes `PENDING`**. Para cada tenencia:
-  `ticker`, `quantity`, `last_price`, `close_price` y `avg_cost_price` (precio de compra
-  promedio ponderado). El valor de mercado de una posición es `quantity * last_price`; usá
-  `avg_cost_price` para la ganancia ($) y el rendimiento (%).
-- `GET /orders` — tu historial de órdenes.
-- `POST /orders` — envío de una orden. Body:
+- `GET /instruments` — list of instruments. Each one includes `ticker`, `name`, `last_price`, and `close_price`. The daily return is calculated from the last price and closing price.
+- `GET /search?query=<text>` — search for instruments by ticker.
+- `GET /portfolio` — `{ cash, holdings }`, derived from your `FILLED` orders and **net of amounts reserved by your `PENDING` orders**. Each holding includes: `ticker`, `quantity`, `last_price`, `close_price`, and `avg_cost_price` (weighted average purchase price). A position's market value is `quantity * last_price`; use `avg_cost_price` to calculate profit ($) and return (%).
+- `GET /orders` — your order history.
+- `POST /orders` — submits an order. Body:
 
   ```json
-  // Orden a mercado, por cantidad de acciones
+  // Market order, by number of shares
   { "instrument_id": 1, "side": "BUY", "type": "MARKET", "quantity": 1234 }
 
-  // Orden límite (requiere price)
+  // Limit order (requires price)
   { "instrument_id": 1, "side": "SELL", "type": "LIMIT", "quantity": 123, "price": 84.5 }
   ```
 
-  La respuesta incluye un `id` y un `status`.
-- `POST /reset` — borra tu estado para empezar de cero.
+  The response includes an `id` and a `status`.
+- `POST /reset` — clears your state so you can start over.
 
-### Reglas de negocio documentadas
+### Documented business rules
 
-- Los precios están en pesos (ARS) y no se admiten fracciones de acciones: `quantity` debe
-  ser un **entero positivo**.
-- `side` puede ser `BUY` o `SELL`; `type` puede ser `MARKET` o `LIMIT`.
-- El `status` de una orden puede ser `FILLED`, `PENDING` o `REJECTED`.
-- Las órdenes `MARKET` se ejecutan de inmediato (`FILLED`) al `last_price` del instrumento.
-- Las órdenes `LIMIT` **siempre se crean como `PENDING`** y se resuelven en algún momento
-  (conceptualmente, cuando el mercado las acepta; en la práctica, bajo ciertas condiciones y
-  con un factor aleatorio): cada `PENDING` puede quedarse en `PENDING`, pasar a `FILLED` o
-  pasar a `REJECTED`.
-- Al crearse, tanto `MARKET` como `LIMIT` **reservan saldo**: una compra reserva efectivo y
-  una venta reserva acciones. Una orden `PENDING` mantiene esa reserva (reduce lo disponible
-  para nuevas órdenes), una `FILLED` la liquida y una `REJECTED` la libera. Por eso el `cash`
-  y las `holdings` de `/portfolio` van **netos de lo reservado**.
+- Prices are in pesos (ARS), and fractional shares are not allowed: `quantity` must be a **positive integer**.
+- `side` can be `BUY` or `SELL`; `type` can be `MARKET` or `LIMIT`.
+- An order's `status` can be `FILLED`, `PENDING`, or `REJECTED`.
+- `MARKET` orders are executed immediately (`FILLED`) at the instrument's `last_price`.
+- `LIMIT` orders are **always created as `PENDING`** and are resolved at some point (conceptually, when the market accepts them; in practice, under certain conditions and with a random factor): each `PENDING` order may remain `PENDING`, transition to `FILLED`, or transition to `REJECTED`.
+- When created, both `MARKET` and `LIMIT` orders **reserve funds**: a buy reserves cash and a sell reserves shares. A `PENDING` order maintains that reservation (reducing what is available for new orders), a `FILLED` order settles it, and a `REJECTED` order releases it. Therefore, the `cash` and `holdings` returned by `/portfolio` are **net of reserved amounts**.
 
-## Qué esperamos que entregues
+## What we expect you to deliver
 
-1. **Plan de pruebas** (puede vivir dentro del README). Como mínimo:
-   - Alcance: qué vas a cubrir y con qué profundidad.
-   - **Fuera de alcance**: qué decidiste NO probar y **la razón** (tiempo, riesgo, valor,
-     limitaciones del entorno, etc.).
-   - Priorización basada en riesgo: qué es lo más crítico de este sistema y por qué.
-   - Supuestos que tomaste ante cualquier ambigüedad de la consigna o del comportamiento
-     real de la app/API.
-2. **Suite de pruebas automatizadas**. Lenguaje y framework a tu elección. Tiene que estar
-   acompañada de la documentación para poder ejecutarse.
-3. **Reporte de bugs / hallazgos**. Todo comportamiento que consideres incorrecto,
-   inconsistente o inesperado respecto de lo documentado. Para cada hallazgo: pasos de
-   reproducción, resultado esperado vs. obtenido, severidad y evidencia.
-4. **README** que explique cómo ejecutar la suite y las decisiones que tomaste.
+1. **Test plan** (it may be included in the README). At a minimum:
+   - Scope: what you will cover and to what depth.
+   - **Out of scope**: what you decided NOT to test and **why** (time, risk, value, environment limitations, etc.).
+   - Risk-based prioritization: what is most critical in this system and why.
+   - Assumptions made in response to any ambiguity in the assignment or the actual behavior of the app/API.
+2. **Automated test suite**. Use the language and framework of your choice. It must include documentation explaining how to run it.
+3. **Bug / findings report**. Include any behavior you consider incorrect, inconsistent, or unexpected relative to the documentation. For each finding, provide reproduction steps, expected vs. actual results, severity, and evidence.
+4. **README** explaining how to run the suite and the decisions you made.
 
-## Consideraciones técnicas
+## Technical considerations
 
-- La suite debe ser **reproducible** por otra persona: instrucciones claras y una sola
-  forma de ejecutarla.
-- Pensá en la **confiabilidad** de tus pruebas: que no sean intermitentes (flaky) y que sus
-  aserciones verifiquen comportamiento real, no solo que el request "no explotó". Tené en
-  cuenta que la resolución de las órdenes `LIMIT` es **no determinística**.
-- Pensá en el **aislamiento entre tests**: tu estado persiste entre corridas y varias pueden
-  interferir entre sí. Usá tu `X-Candidate-Id` y `POST /reset` a tu favor.
-- La app puede tener **problemas de calidad**, incluso cosas que **dificulten la
-  automatización**. Detectarlos y documentarlos es parte del challenge.
-- Si necesitás **modificar la app** para poder automatizarla, hacelo; documentá **qué
-  cambiaste y por qué**.
-- Reporte de resultados legible (HTML, JUnit, etc.).
+- The suite must be **reproducible** by someone else: provide clear instructions and a single way to run it.
+- Consider the **reliability** of your tests: they should not be flaky, and their assertions should verify actual behavior rather than merely confirming that the request "did not crash." Keep in mind that the resolution of `LIMIT` orders is **non-deterministic**.
+- Consider **test isolation**: your state persists across runs, and multiple runs may interfere with one another. Use your `X-Candidate-Id` and `POST /reset` to your advantage.
+- The app may have **quality issues**, including issues that **make automation more difficult**. Identifying and documenting them is part of the challenge.
+- If you need to **modify the app** to automate it, do so; document **what you changed and why**.
+- Provide a readable results report (HTML, JUnit, etc.).
 
-## Opcionales / Nice to have
+## Optional / Nice to have
 
-- Validación de contrato/esquema de las respuestas.
-- Colección de Postman/Insomnia/REST Client como apoyo a la exploración.
+- Response contract/schema validation.
+- A Postman/Insomnia/REST Client collection to support exploratory testing.
 
-## Entrega
+## Submission
 
-Subí tu solución a un repositorio git (público o con acceso) con todo el historial de
-commits. Enfocate en entregarlo como si fuera a usarse en un entorno real (Production
-Ready).
+Push your solution to a Git repository (public or with access granted) with the full commit history. Approach it as if it were intended for a real-world environment (production-ready).
